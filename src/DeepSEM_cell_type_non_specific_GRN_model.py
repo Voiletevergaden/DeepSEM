@@ -15,7 +15,7 @@ from src.utils import evaluate, extractEdgesFromMatrix
 Tensor = torch.cuda.FloatTensor
 
 
-class non_celltype_GRN_model:
+class non_celltype_GRN_model:  # without celltype lable
     def __init__(self, opt):
         self.opt = opt
         try:
@@ -25,21 +25,22 @@ class non_celltype_GRN_model:
 
     def initalize_A(self, data):
         num_genes = data.shape[1]
-        A = np.ones([num_genes, num_genes]) / (num_genes - 1) + (np.random.rand(num_genes * num_genes) * 0.0002).reshape(
+        A = np.ones([num_genes, num_genes]) / (num_genes - 1) + (
+                    np.random.rand(num_genes * num_genes) * 0.0002).reshape(
             [num_genes, num_genes])
         for i in range(len(A)):
             A[i, i] = 0
         return A
 
     def init_data(self):
-        Ground_Truth = pd.read_csv(self.opt.net_file, header=0)
+        Ground_Truth = pd.read_csv(self.opt.net_file, header=0)  # 这里的ground_truth是指约束条件
         data = sc.read(self.opt.data_file)
         gene_name = list(data.var_names)
         data_values = data.X
         Dropout_Mask = (data_values != 0).astype(float)
         data_values = (data_values - data_values.mean(0)) / (data_values.std(0))
         data = pd.DataFrame(data_values, index=list(data.obs_names), columns=gene_name)
-        TF = set(Ground_Truth['Gene1'])
+        TF = set(Ground_Truth['Gene1'])  # 调控因子
         All_gene = set(Ground_Truth['Gene1']) | set(Ground_Truth['Gene2'])
         num_genes, num_nodes = data.shape[1], data.shape[0]
         Evaluate_Mask = np.zeros([num_genes, num_genes])
@@ -55,7 +56,7 @@ class non_celltype_GRN_model:
         feat_train = torch.FloatTensor(data.values)
         train_data = TensorDataset(feat_train, torch.LongTensor(list(range(len(feat_train)))),
                                    torch.FloatTensor(Dropout_Mask))
-        dataloader = DataLoader(train_data, batch_size=self.opt.batch_size, shuffle=True, num_workers=1)
+        dataloader = DataLoader(train_data, batch_size=self.opt.batch_size, shuffle=True, num_workers=1)  # 这里的num_workers用来指定多进程的数量，默认值为0.表示不启用多线程
         truth_df = pd.DataFrame(np.zeros([num_genes, num_genes]), index=data.columns, columns=data.columns)
         for i in range(Ground_Truth.shape[0]):
             truth_df.loc[Ground_Truth.iloc[i, 1], Ground_Truth.iloc[i, 0]] = 1
